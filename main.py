@@ -38,6 +38,7 @@ with requests.Session() as session:
         for section_tag in soup.find_all(
             'a', {'class': 'link'}, href=re.compile('.*/section/.*')
         ):
+            print('Scraping page {}...'.format(section_tag.attrs['href']))
             # Add links to set
             section_links.add(
                 base_url.format(section_tag.attrs['href'])

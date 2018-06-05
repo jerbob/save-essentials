@@ -13,8 +13,9 @@ base_url = 'https://essentials.joincyberdiscovery.com{}'
 module_url = 'https://essentials.joincyberdiscovery.com/course/module/{}'
 
 input(
-    'Save your Cookies for https://essentials.joincyberdiscovery.com'
-    ' in the file cookies.txt.\nPress enter to continue.\n'
+    'Copy and Paste the content of your "Cookie" header for '
+    'https://essentials.joincyberdiscovery.com in the file cookies.txt.'
+    '\nPress enter to continue.\n'
 )
 
 # Open and read cookie file
@@ -57,6 +58,29 @@ with requests.Session() as session:
         content = session.get(url).content
         soup = BeautifulSoup(content, 'html.parser')
         video_iframe = soup.find('iframe')
+        audio_tag = soup.find('audio')
+
+        if audio_tag:
+            # Create HTML element to replace player
+            new_player = (
+                '<audio controls>'
+                '<source src="{}" type="audio/mp3">'
+                '</audio>'
+            ).format(filename.split('/')[-1] + 'mp3')
+            new_player = BeautifulSoup(new_player, 'html.parser')
+            # Find player div to replace
+            print('Parsing embedded audio {}...'.format(filename))
+            player_div = soup.find('div', {'id': 'audio_player'})
+            # Get the audio player tag
+            audio_src = audio_tag.attrs['src']
+            audio_src = base_url.format(audio_src)
+            audio = session.get(audio_src).content
+            # Write audio content
+            print('Writing embedded audio {}...'.format(filename))
+            with open(filename + 'mp3', 'wb') as file:
+                file.write(audio)
+            # Replace the original audio player with the modified tag
+            player_div.replace_with(new_player)
 
         if video_iframe:
             # Create HTML element to replace iframe
@@ -64,14 +88,12 @@ with requests.Session() as session:
                 '<video width="1100" height="619" controls>'
                 '<source src="{}" type="video/mp4">'
                 '</video>'
-            ).format(filename.replace('course/module/1/section/', '') + 'mp4')
+            ).format(filename.split('/')[-1] + 'mp4')
             new_video = BeautifulSoup(new_video, 'html.parser')
             # Fake the referer header with the Essentials URL
             session.headers['Referer'] = url
             print('Parsing embedded video {}...'.format(filename))
             video_src = session.get(video_iframe.attrs['src']).content.decode()
-            with open('log.html', 'w+') as file:
-                file.write(video_src)
             video_src = video_pattern.search(video_src).group(1)
             # Get actual video file content
             video = session.get(video_src).content
